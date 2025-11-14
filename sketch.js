@@ -1,21 +1,21 @@
-var react_time = false;
-//region Setup
 function setup() {
-  createCanvas(400, 400);
-  noStroke();
-  fill(0, 122, 255); // blue
+  //creates a canvas 600 pixels wide
+  //and 400 pixels high
+  createCanvas(600, 400);
 }
-//endregion
-
-//region Draw 
 function draw() {
-  background(220);
-  if (mouseIsPressed) and (not react_time) {
-    fill(255, 0, 0); // red when pressed
-  } else {
-    fill(0, 122, 255); // blue otherwise
-  }
-  circle(200, 200, 50);
-
-} 
-//#endregion
+  //sky blue background
+  background(135, 206, 235);
+  //sun in top-right corner
+  fill("yellow");
+  circle(550, 50, 100);
+ 
+  //grass on bottom half
+  fill("green");
+  rect(0, 200, 600, 200);
+ 
+  //emojis
+  textSize(75)
+  text("🌸", 100, 250) //flower
+  text("🐞", mouseX, mouseY) //ladybug
+}
