@@ -90,7 +90,7 @@ function draw(){
 
     // Check stability (unstable when |N - P| > 2)
     let neutronProtonDiff = abs(amountneutrons - amountprotons);
-    isUnstable = neutronProtonDiff > 2;
+    isUnstable = neutronProtonDiff > 0;
     
     // Calculate shake amount if unstable
     let shakeX = 0, shakeY = 0;
