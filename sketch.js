@@ -14,19 +14,22 @@ var squarepressed = false;
 var squareplaced = false;
 var squares_placed = [];
 
-// Simple particle placement sketch
-// - Click the red circle (proton) or grey circle (neutron) to select.
-//   Clicking again places one in the nucleus center (with a small random jitter).
-// - Click the small blue circle (electron) to select.
-//   When placing an electron, it is guaranteed to be outside the nucleus.
+var element = 0;
+var elementName = "";
+
+
 
 let nucleusX, nucleusY;
 let nucleusRadius = 80;
+// offsets for the electron shells (pixels beyond nucleusRadius)
+const shellOffsets = [40, 80, 120];
+// capacities per shell (same order as shellOffsets). First shell 2, others 8 by default.
+const shellCaps = [2, 8, 8];
 
 // palette positions
 const protonX = 80, protonY = 80, protonR = 26;
 const neutronX = 180, neutronY = 80, neutronR = 26;
-const electronX = 280, electronY = 80, electronR = 14;
+const electronX = 280, electronY = 80, electronR = 14
 
 let selected = null; // 'proton' | 'neutron' | 'electron' | null
 
@@ -50,6 +53,15 @@ function draw(){
     strokeWeight(2);
     circle(nucleusX, nucleusY, nucleusRadius*2);
 
+    // compute shell objects and draw shells
+    let shells = getShells();
+    stroke(180, 100);
+    strokeWeight(1);
+    noFill();
+    for (let s of shells) {
+        circle(nucleusX, nucleusY, s.radius * 2);
+    }
+
     // draw placed protons and neutrons (inside nucleus)
     noStroke();
     for (let p of protons){
@@ -61,10 +73,14 @@ function draw(){
         circle(n.x, n.y, n.size);
     }
 
-    // draw electrons (outside)
+    // draw electrons (outside) - electrons store shell index + angle for stable layout
     for (let e of electrons){
+        let s = shells[e.shell];
+        if (!s) continue;
+        let ex = nucleusX + cos(e.angle) * s.radius;
+        let ey = nucleusY + sin(e.angle) * s.radius;
         fill(50,100,255); // blue
-        circle(e.x, e.y, e.size);
+        circle(ex, ey, e.size);
     }
 
     // draw palette
@@ -87,19 +103,32 @@ function draw(){
         push();
         fill(50,100,255,140);
         noStroke();
-        // ensure preview shows outside the nucleus visually
+        // snap preview to the innermost shell that has capacity
         let px = mouseX;
         let py = mouseY;
         let dx = px - nucleusX;
         let dy = py - nucleusY;
         let d = dist(px, py, nucleusX, nucleusY);
-        let minDist = nucleusRadius + 20;
-        if (d < minDist){
-            if (d === 0) { dx = 1; dy = 0; d = 1; }
-            px = nucleusX + dx / d * minDist;
-            py = nucleusY + dy / d * minDist;
+        // recompute shell counts from current electrons
+        for (let s of shells) s.count = 0;
+        for (let e of electrons) if (shells[e.shell]) shells[e.shell].count++;
+
+        // find the first (innermost) shell with available capacity
+        let targetShell = null;
+        for (let i = 0; i < shells.length; i++){
+            if (shells[i].count < shells[i].capacity){ targetShell = i; break; }
         }
-        circle(px, py, 12);
+        if (targetShell === null){
+            // no capacity: show preview at mouse but dimmed
+            circle(px, py, 12);
+        } else {
+            if (d === 0) { dx = 1; dy = 0; d = 1; }
+            let angle = atan2(dy, dx);
+            let r = shells[targetShell].radius;
+            px = nucleusX + cos(angle) * r;
+            py = nucleusY + sin(angle) * r;
+            circle(px, py, 12);
+        }
         pop();
     }
 
@@ -123,6 +152,16 @@ function draw(){
     text(`Electrons: ${amountelectrons}`, width - margin, topY + 2 * lineHeight);
     // restore center alignment used elsewhere
     textAlign(CENTER, CENTER);
+
+    // draw identified element on middle-right
+    if (elementName && elementName.length > 0) {
+        textAlign(RIGHT, CENTER);
+        textSize(16);
+        fill(30);
+        const marginX = 12;
+        text(`Element: ${elementName}`, width - marginX, height / 2);
+        textAlign(CENTER, CENTER);
+    }
 }
 
 function drawPalette(){
@@ -198,6 +237,7 @@ function mouseClicked(){
         let y = nucleusY + sin(angle) * r;
         protons.push({ x: x, y: y, size: 20 });
         amountprotons += 1;
+        elementIdentify();
         selected = null;
         return;
     }
@@ -212,19 +252,33 @@ function mouseClicked(){
         return;
     }
     if (selected === 'electron'){
-        // place electron outside nucleus: if clicked inside nucleus, push it out
+        // place electron on the innermost shell that has capacity
         let px = mouseX;
         let py = mouseY;
-        let d = dist(px, py, nucleusX, nucleusY);
-        let minDist = nucleusRadius + 20; // place just outside
-        if (d < minDist){
-            if (d === 0) { px = nucleusX + minDist; py = nucleusY; }
-            else {
-                px = nucleusX + (px - nucleusX) / d * minDist;
-                py = nucleusY + (py - nucleusY) / d * minDist;
-            }
+        let dx = px - nucleusX;
+        let dy = py - nucleusY;
+        let dClick = dist(px, py, nucleusX, nucleusY);
+        // compute shells and counts
+        let shells = getShells();
+        for (let s of shells) s.count = 0;
+        for (let e of electrons) if (shells[e.shell]) shells[e.shell].count++;
+
+        // find first (innermost) shell with room
+        let targetShell = null;
+        for (let i = 0; i < shells.length; i++){
+            if (shells[i].count < shells[i].capacity){ targetShell = i; break; }
         }
-        electrons.push({ x: px, y: py, size: 10 });
+        if (targetShell === null){
+            // no capacity available; do nothing
+            return;
+        }
+        // compute angle and snap to that shell radius
+        if (dClick === 0) { dx = 1; dy = 0; dClick = 1; }
+        let angle = atan2(dy, dx);
+        let r = shells[targetShell].radius;
+        let ex = nucleusX + cos(angle) * r;
+        let ey = nucleusY + sin(angle) * r;
+        electrons.push({ shell: targetShell, angle: angle, size: 10 });
         amountelectrons += 1;
         selected = null;
         return;
@@ -242,5 +296,43 @@ function keyPressed(){
         amountprotons = 0;
         amountneutrons = 0;
         amountelectrons = 0;
+        elementName = "";
     }
 }
+
+// helper: build shell objects from offsets/capacities so adding more shells is easy
+function getShells(){
+    let res = [];
+    for (let i = 0; i < shellOffsets.length; i++){
+        let r = nucleusRadius + shellOffsets[i];
+        let cap = (shellCaps[i] !== undefined) ? shellCaps[i] : 8;
+        res.push({ radius: r, capacity: cap, count: 0 });
+    }
+    return res;
+}
+
+function elementIdentify(){
+    element = amountprotons;
+    // map proton count to element name
+    switch (element) {
+        case 1: elementName = "Hydrogen"; break;
+        case 2: elementName = "Helium"; break;
+        case 3: elementName = "Lithium"; break;
+        case 4: elementName = "Beryllium"; break;
+        case 5: elementName = "Boron"; break;
+        case 6: elementName = "Carbon"; break;
+        case 7: elementName = "Nitrogen"; break;
+        case 8: elementName = "Oxygen"; break;
+        case 9: elementName = "Fluorine"; break;
+        case 10: elementName = "Neon"; break;
+        case 11: elementName = "Sodium"; break;
+        case 12: elementName = "Magnesium"; break;
+        case 13: elementName = "Aluminum"; break;
+        case 14: elementName = "Silicon"; break;
+        case 15: elementName = "Phosphorus"; break;
+        case 16: elementName = "Sulfur"; break;
+        case 17: elementName = "Chlorine"; break;
+        case 18: elementName = "Argon"; break;
+        default: elementName = "Element not identified"; break;
+    }
+} 
