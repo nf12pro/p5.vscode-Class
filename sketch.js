@@ -168,21 +168,21 @@ function draw(){
 	}
 
 	fill(80);
-	textSize(13);
+	textSize(13); //simple text/font settings
 	text("Click a particle to select it. Click again to place. Press R to restart", width / 2, 24); // instructions at top center
 
 	fill(0);
-	textSize(14);
+	textSize(14); // shows numbers of each particle at bottom right
 	const margin = 12;
 	const lineHeight = 18;
 	const topY = height - margin - 2 * lineHeight;
 	textAlign(RIGHT, TOP);
-	text(`Protons: ${amountprotons}`, width - margin, topY);
+	text(`Protons: ${amountprotons}`, width - margin, topY); 
 	text(`Neutrons: ${amountneutrons}`, width - margin, topY + lineHeight);
 	text(`Electrons: ${amountelectrons}`, width - margin, topY + 2 * lineHeight);
 	textAlign(CENTER, CENTER);
 
-	let stabilityLabel = isUnstable ? "Unstable" : "Stable";
+	let stabilityLabel = isUnstable ? "Unstable" : "Stable"; // shows whether element is stable or not through text
 	let stabilityColor = isUnstable ? color(200, 50, 50) : color(50, 150, 50);
 	fill(stabilityColor);
 	textSize(28);
@@ -193,25 +193,25 @@ function draw(){
 	fill(30);
 	const marginX = 12;
 	if (elementName){
-		text(`Element: ${elementName}`, width - marginX, height / 2);
+		text(`Element: ${elementName}`, width - marginX, height / 2); // shows element name
 	}
 
-	charge = amountprotons - amountelectrons;
+	charge = amountprotons - amountelectrons; // charge obtained by difference
 	let displayCharge = charge > 0 ? `+${charge}` : `${charge}`;
 	textSize(14);
-	text(`Charge: ${displayCharge}`, width - marginX, height / 2 + 28);
-	let mass = amountprotons + amountneutrons;
-	text(`Mass: ${mass}`, width - marginX, height / 2 + 48);
+	text(`Charge: ${displayCharge}`, width - marginX, height / 2 + 28); // shows charge
+	let mass = amountprotons + amountneutrons; // mass is sum of protons and neutrons
+	text(`Mass: ${mass}`, width - marginX, height / 2 + 48); // shows mass
 	textAlign(CENTER, CENTER);
 }
 
-function drawPalette(){
-	let protonFull = amountprotons >= 18;
+function drawPalette(){ // draws the particle selection palette
+	let protonFull = amountprotons >= PROTON_CAP; // check if proton cap is reached
 	stroke(120);
 	strokeWeight(1);
 	fill(protonFull ? color(120, 140) : color(200, 50, 50));
 	circle(protonX, protonY, protonR * 2);
-	if (!protonFull && selected === 'proton'){
+	if (!protonFull && selected === 'proton'){ 
 		noFill();
 		stroke(0);
 		strokeWeight(2);
@@ -220,9 +220,9 @@ function drawPalette(){
 	noStroke();
 	fill(protonFull ? 200 : 255);
 	textSize(12);
-	text('Proton', protonX, protonY + protonR + 14);
+	text('Proton', protonX, protonY + protonR + 14); // label
 
-	let neutronFull = amountneutrons >= NEUTRON_CAP;
+	let neutronFull = amountneutrons >= NEUTRON_CAP; // simple copy and paste with variable change from protons
 	stroke(120);
 	strokeWeight(1);
 	fill(neutronFull ? color(120, 140) : 150);
@@ -253,27 +253,27 @@ function drawPalette(){
 	text('Electron', electronX, electronY + electronR + 14);
 }
 
-function mouseClicked(){
-	let protonFull = amountprotons >= 18;
+function mouseClicked(){ // checks mouse clicks 
+	let protonFull = amountprotons >= PROTON_CAP; // check if particle cap is reached
 	let neutronFull = amountneutrons >= NEUTRON_CAP;
 	let electronFull = amountelectrons >= ELECTRON_CAP;
 
-	if (dist(mouseX, mouseY, protonX, protonY) <= protonR){
+	if (dist(mouseX, mouseY, protonX, protonY) <= protonR){ // click on proton in palette
 		if (!protonFull) selected = selected === 'proton' ? null : 'proton';
 		return;
 	}
-	if (dist(mouseX, mouseY, neutronX, neutronY) <= neutronR){
+	if (dist(mouseX, mouseY, neutronX, neutronY) <= neutronR){ // click on neutron in palette
 		if (!neutronFull) selected = selected === 'neutron' ? null : 'neutron';
 		return;
 	}
-	if (dist(mouseX, mouseY, electronX, electronY) <= electronR){
+	if (dist(mouseX, mouseY, electronX, electronY) <= electronR){ // click on electron in palette
 		if (!electronFull) selected = selected === 'electron' ? null : 'electron';
 		return;
 	}
 
-	if (selected === 'proton'){
+	if (selected === 'proton'){ // placing proton
 		let dClick = dist(mouseX, mouseY, nucleusX, nucleusY);
-		if (dClick <= nucleusRadius && amountprotons < 18){
+		if (dClick <= nucleusRadius && amountprotons < PROTON_CAP){
 			let angle = random(TWO_PI);
 			let r = random(0, nucleusRadius * 0.5);
 			protons.push({
@@ -282,13 +282,13 @@ function mouseClicked(){
 				size: 20
 			});
 			amountprotons++;
-			elementIdentify();
+			elementIdentify(); // update element
 			selected = null;
 		}
 		return;
 	}
 
-	if (selected === 'neutron'){
+	if (selected === 'neutron'){ //placing neutron
 		let dClick = dist(mouseX, mouseY, nucleusX, nucleusY);
 		if (dClick <= nucleusRadius && amountneutrons < NEUTRON_CAP){
 			let angle = random(TWO_PI);
@@ -304,7 +304,7 @@ function mouseClicked(){
 		return;
 	}
 
-	if (selected === 'electron'){
+	if (selected === 'electron'){ // placing electron
 		if (amountelectrons >= ELECTRON_CAP){
 			selected = null;
 			return;
@@ -339,7 +339,7 @@ function mouseClicked(){
 	}
 }
 
-function keyPressed(){
+function keyPressed(){ // restart on R pressed
 	if (key === 'r' || key === 'R'){
 		protons = [];
 		neutrons = [];
@@ -351,7 +351,7 @@ function keyPressed(){
 	}
 }
 
-function getShells(){
+function getShells(){ // returns array of shell data
 	let res = [];
 	for (let i = 0; i < shellOffsets.length; i++){
 		let r = nucleusRadius + shellOffsets[i];
@@ -361,7 +361,7 @@ function getShells(){
 	return res;
 }
 
-function elementIdentify(){
+function elementIdentify(){ // identifies element based on number of protons
 	element = amountprotons;
 	switch (element){
 		case 1: elementName = "Hydrogen"; break;
